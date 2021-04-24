@@ -1,3 +1,4 @@
+using Azure.Storage.Queues;
 using Microsoft.Azure.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -23,15 +24,19 @@ namespace PixWebhook.Worker
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            // Instantiate a QueueClient which will be used to create and manipulate the queue
+            QueueClient queueClient = new QueueClient(_config["AzureQueues:ConnectionString"], _config["AzureQueues:ConvertedQueueName"]);
+
             var storageAccount = CloudStorageAccount.Parse(
                 _config["AzureQueues:ConnectionString"]);
 
             using var activator = new BuiltinHandlerActivator();
-            activator.Register(() => new NewPixHandler());
+            activator.Register(() => new NewPixHandler(queueClient));
             Configure.With(activator)
                 .Transport(t => t.UseAzureStorageQueues(
                     storageAccount, _config["AzureQueues:QueueName"]))
-                .Start();
+                .Start();           
+            
 
             await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
         }
